@@ -5,6 +5,9 @@ NOTE: [`egui-winit`](../egui-winit/CHANGELOG.md), [`egui_glium`](../egui_glium/C
 
 
 ## Unreleased
+* Add `wgpu` rendering backed ([#1564](https://github.com/emilk/egui/pull/1564)):
+  * Add features "wgpu" and "glow"
+  * Add `NativeOptions::renderer` to switch between the rendering backends
 
 
 ## 0.18.0 - 2022-04-30
