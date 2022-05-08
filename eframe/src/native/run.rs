@@ -1,5 +1,6 @@
 use super::epi_integration;
 use crate::epi;
+use egui::Pos2;
 use egui_winit::winit;
 
 struct RequestRepaintEvent;
@@ -35,6 +36,7 @@ fn create_display(
 // ----------------------------------------------------------------------------
 
 pub use epi::NativeOptions;
+use winit::dpi::{LogicalPosition, PhysicalPosition, Position};
 
 /// Run an egui app
 #[allow(unsafe_code)]
@@ -79,6 +81,66 @@ pub fn run(app_name: &str, native_options: &epi::NativeOptions, app_creator: epi
 
     event_loop.run(move |event, _, control_flow| {
         let mut redraw = || {
+            {
+                let mut input = integration.egui_ctx.input_mut();
+                use egui::CursorLock;
+
+                match input.cursor_lock {
+                    CursorLock::PendingLock { point_to_return } => {
+                        // gl_window.window().set_cursor_visible(false);
+                        gl_window.window().set_cursor_grab(true).unwrap();
+
+                        let size = gl_window.window().inner_size();
+                        let pos = PhysicalPosition {
+                            x: (size.width as i32) / 2,
+                            y: (size.height as i32) / 2,
+                        };
+
+                        gl_window
+                            .window()
+                            .set_cursor_position(Position::Physical(pos))
+                            .unwrap();
+
+                        input.cursor_lock = CursorLock::Locked {
+                            point_to_return,
+                            screen_center: Pos2 {
+                                x: pos.x as f32,
+                                y: pos.y as f32,
+                            },
+                        };
+                    }
+                    CursorLock::PendingUnLock {
+                        point_to_return: to_pos,
+                    } => {
+                        gl_window
+                            .window()
+                            .set_cursor_position(Position::Physical(PhysicalPosition {
+                                x: to_pos.x as i32,
+                                y: to_pos.y as i32,
+                            }))
+                            .unwrap();
+
+                        gl_window.window().set_cursor_visible(true);
+                        gl_window.window().set_cursor_grab(false).unwrap();
+                        input.cursor_lock = CursorLock::Unlocked
+                    }
+                    CursorLock::Locked { .. } => {
+                        let size = gl_window.window().inner_size();
+
+                        let pos = PhysicalPosition {
+                            x: (size.width as i32) / 2,
+                            y: (size.height as i32) / 2,
+                        };
+
+                        gl_window
+                            .window()
+                            .set_cursor_position(Position::Physical(pos))
+                            .unwrap();
+                    }
+                    CursorLock::Unlocked => {}
+                };
+            }
+
             #[cfg(feature = "puffin")]
             puffin::GlobalProfiler::lock().new_frame();
 
@@ -164,6 +226,7 @@ pub fn run(app_name: &str, native_options: &epi::NativeOptions, app_creator: epi
                 }
 
                 integration.on_event(app.as_mut(), &event);
+
                 if integration.should_quit() {
                     *control_flow = winit::event_loop::ControlFlow::Exit;
                 }
